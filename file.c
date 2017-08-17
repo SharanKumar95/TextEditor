@@ -6,6 +6,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/ioctl.h>
 
 /***DEFINES***/
 
@@ -13,30 +14,40 @@
  
 /***DATA***/
 
-struct termios orig_termios;
+//Structure definition
+struct editorConfig
+{
+ int screenRows;
+ int screenCols;
+ struct termios orig_termios;
+};
+
+struct editorConfig E;
 
 /***TERMINAL***/
 
 void die(const char *s) 
 {
+  write(STDOUT_FILENO, "\x1b[2J",4);
+  write(STDOUT_FILENO, "\x1b[H",3);
   perror(s);
   exit(1);
 }
 
 void disableRawMode() 
 {
-  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1)
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.orig_termios) == -1)
     die("tcsetattr");
 }
 
 void enableRawMode() 
 {
-  if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) 
+  if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1) 
   {
     die("tcgetattr");
   }
   atexit(disableRawMode);
-  struct termios raw = orig_termios;
+  struct termios raw = E.orig_termios;
   //Unsetting some flags in the terminal to accept raw input
   raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);    //Input flags
   raw.c_oflag &= ~(OPOST);                                     //Output flags
@@ -66,11 +77,71 @@ char editorReadKey()
   return c;
 }
 
+int getCursorPosition(int *rows, int *cols)
+{
+  char buf[32];
+  unsigned int i = 0;
+  if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) 
+  {
+   return -1;
+  }
+ // printf("\r\n");
+  while (i < sizeof(buf) - 1) 
+  {
+    if (read(STDIN_FILENO, &buf[i], 1) != 1)
+    {
+     break;
+    }
+    if (buf[i] == 'R') 
+    {
+     break;
+    }
+    i++;
+  }
+  buf[i] = '\0';
+  printf("\r\n&buf[1]: '%s'\r\n", &buf[1]);
+
+  editorReadKey();
+  return -1;
+}
+
+int getWindowSize( int *rows , int *cols)
+{
+ struct winsize ws;
+   if (1 || ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) 
+    {
+    if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12)
+      {
+        return -1;
+      }
+    return getCursorPosition(rows, cols);
+    }
+    else 
+    {
+    *cols = ws.ws_col;
+    *rows = ws.ws_row;
+    return 0;
+    }
+}
+
 /***OUTPUT***/
+
+void editorDrawRows()
+{
+  int i;
+  for(i=0;i<E.screenRows;i++)
+  {
+    write(STDOUT_FILENO, "~\r\n",3);
+  }
+}
 
 void editorRefreshScreen()
 {
-  write(STDOUT_FILENO, "\x1b[J",4);
+  write(STDOUT_FILENO, "\x1b[2J",4);
+  write(STDOUT_FILENO, "\x1b[H",3);
+  
+  editorDrawRows();
+  write(STDOUT_FILENO, "\x1b[H",3);
 }
 
 /***INPUT***/
@@ -81,16 +152,28 @@ void editorProcessKeypress()
  
  switch(c)
  {
-   case CNTRL_KEY('q') : exit(0);
+   case CNTRL_KEY('q') : write(STDOUT_FILENO, "\x1b[2J", 4);
+                         write(STDOUT_FILENO, "\x1b[H", 3);
+                         exit(0);
                          break;
  }
 }
 
 /***INIT***/
 
+void initEditor()
+{
+ int i = getWindowSize(&E.screenRows,&E.screenCols);
+ if(i==-1)
+  {
+   die("getWindowSize");
+  }
+}
+
 int main() 
 {
   enableRawMode();
+  initEditor();
  
   while (1) 
    {
