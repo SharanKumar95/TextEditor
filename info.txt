@@ -1,0 +1,25 @@
+INFORMATION regarding the project
+
+I. Environment Setup details
+
+II. 
+  1. Disable Canonical mode and Enable raw mode
+   - make changes to the terminal (tcgetattr and tcsetattr)
+   - disable certain flags to disable canonical mode
+  2. Disable ctrl+c,z,s,v etc
+  3. Error handling with perrno() and calling die at every failure point
+  4. Disable post output processing
+
+III.
+  1. Ctrl+q will exit the editor
+  2. Clear the screen -Refresh ("\x1b[2J") J-clear_screen \x1b- escape_character
+  3. Reposition the cursor at the top left corner ("\x1b[H")  "\x1b[row_number;col_numberH"
+  4. Print ~ on the screen
+  5. Create a global structure to maintain the variables of the terminal(editor) 
+  6. Get the size of the window/terminal dynamically
+     - Easy way using ioctl TIOCGWINSZ : this may not work all the time
+     - Hard way: going to the right bottom corner and getting the current pos using "\x1b[6n" and parsing it and storing it in variables using sscanf();
+  7. Having multiple write()s may cause some erors so we create a function to append all the writes to a bufffer and then write() it once
+  8. Hide the cursor while repainting: "\x1b[?25l"- turn off cursor "\x1b[?25h"- turn on the cursor
+  9. Erase the contents of current line "\x1b[K"- similar to J
+  10. 

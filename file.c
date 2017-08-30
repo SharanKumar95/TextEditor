@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <termios.h>
+#include <termios.h>                             //Making changes to Terminal
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -66,6 +66,7 @@ struct editorConfig E;
 
 /***TERMINAL***/
 
+//Function to exit if there is any failure
 void die(const char *s) 
 {
   write(STDOUT_FILENO, "\x1b[2J",4);
@@ -80,6 +81,7 @@ void disableRawMode()
     die("tcsetattr");
 }
 
+//Function to disable CANONICAL mode and enable RAW mode
 void enableRawMode() 
 {
   if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1) 
@@ -89,10 +91,25 @@ void enableRawMode()
   atexit(disableRawMode);
   struct termios raw = E.orig_termios;
   //Unsetting some flags in the terminal to accept raw input
+  /*
+  IXON: Disable ctrl+s and ctrl+q
+  ICRNL: Disables ctrl+m (ctrl+m is for carriage return)
+  */
   raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);    //Input flags
+
+  /*OPOST: Disable any output processing (\n to \r\n processing)*/
   raw.c_oflag &= ~(OPOST);                                     //Output flags
+ 
   raw.c_cflag |= (CS8);                                        //Control flags
-  raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);             //Local flags
+
+  /*
+   ECHO: Print characters you enter ont the screen
+   ICANON: To turn off canonical form
+   ISIG: To turn off ctrl+c and ctrl+z
+   IEXTEN: To turn off ctrl+v
+  */
+  raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);             //Local flags   
+  
   //Adding some timeout for read() 
   raw.c_cc[VMIN] = 0;                               //Min number of bytes required for read() to return (here it is 0)
   raw.c_cc[VTIME] = 1;                              //Time it can wait before returning (in 1/10th of a second) 
@@ -175,7 +192,7 @@ int getCursorPosition(int *rows, int *cols)
 {
   char buf[32];
   unsigned int i = 0;
-  if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) 
+  if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4)               //n- is used to query the terminal 6-is used to get the current cursor position
   {
    return -1;
   }
@@ -198,7 +215,7 @@ int getCursorPosition(int *rows, int *cols)
    {
     return -1;
    }
-  if (sscanf(&buf[2], "%d;%d", rows, cols) != 2)
+  if (sscanf(&buf[2], "%d;%d", rows, cols) != 2)        // parsing the output of "\x1b[6n" and storing it in rows and cols variables
   { 
     return -1;
   }
@@ -269,7 +286,7 @@ void editorUpdateRow(erow *row)
 
 void editorAppendRow(char *s, size_t len) 
 {
-  E.row = realloc(E.row, sizeof(erow) * (E.numRows + 1));
+  E.row = realloc(E.row, sizeof(erow) * (E.numRows + 1));               //2D array initialised dynamically
   int at = E.numRows;
   E.row[at].size = len;
   E.row[at].chars = malloc(len + 1);
@@ -448,7 +465,7 @@ void editorRefreshScreen()
   editorScroll();
   struct abuf ab = ABUF_INIT;
   abAppend(&ab, "\x1b[?25l", 6);                              //Hide the cursor
-  abAppend(&ab, "\x1b[H", 3);
+  abAppend(&ab, "\x1b[H", 3);                                 // Reposition the cursor at the top left corner
   
   editorDrawRows(&ab);
   editorDrawStatusBar(&ab);
