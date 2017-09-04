@@ -23,6 +23,7 @@
 #define TAB_STOP 8
 #define CNTRL_KEY(k) ((k) & 0x1f)
 #define QUIT_TIMES 3
+
 enum editorKey 
 {
   BACKSPACE=127,
@@ -128,8 +129,8 @@ void enableRawMode()
       die("tcsetattr");
      }
 }
-
-int  editorReadKey()
+/*Function to get the input from the user one char at a time*/
+int  editorReadKey()                          
 {
  int bytesRead;
  char c;
@@ -232,16 +233,19 @@ int getCursorPosition(int *rows, int *cols)
   
 }
 
+/*Function to get the size of the terminal window*/
 int getWindowSize( int *rows , int *cols)
 {
  struct winsize ws;
-   if ( ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) 
+ //TIOCGWINSZ will give the size of the window, but may not work all the time
+   if ( ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0)             
     {
-    if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12)
+    //getting window size the hard way
+    if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12)        //moving the cursor to the bottom right corner of the screen/window
       {
         return -1;
       }
-    return getCursorPosition(rows, cols);
+    return getCursorPosition(rows, cols);                           //get the current position of the cursor
     }
     else 
     {
@@ -899,9 +903,9 @@ void editorProcessKeypress()
       }
       break;
 
-  case ARROW_UP: editorMoveCursor(c);
-  case ARROW_DOWN: editorMoveCursor(c);
-  case ARROW_LEFT: editorMoveCursor(c);
+  case ARROW_UP: 
+  case ARROW_DOWN: 
+  case ARROW_LEFT: 
   case ARROW_RIGHT: editorMoveCursor(c);
             break;
 
