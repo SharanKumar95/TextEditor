@@ -472,9 +472,11 @@ void editorOpen(char *filename)
  {
   free(E.filename);
   E.filename = strdup(filename);
+
   FILE *fp = fopen(filename, "r");
   if (!fp) 
     die("fopen");
+
   char *line = NULL;                                     // buffer
   size_t linecap = 0;                                    //line capacity: size of line 
   ssize_t linelen;                                       //to store the length of the line
@@ -483,7 +485,7 @@ void editorOpen(char *filename)
     while (linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
        linelen--;
 
-    editorInsertRow(E.numRows, "", 0);
+    editorInsertRow(E.numRows, line,linelen );
    }
   free(line);
   fclose(fp);
