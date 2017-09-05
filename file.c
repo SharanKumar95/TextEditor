@@ -378,11 +378,11 @@ void editorRowAppendString(erow *row, char *s, size_t len)
 
 void editorRowDelChar(erow *row, int at)            //Delete chars
 {
- if(at < 0 || at > row->size)
+ if(at < 0 || at >= row->size)
   {
     return;
   }
- memmove(&row->chars[at], &row->chars[at+1],1);
+ memmove(&row->chars[at], &row->chars[at+1],row->size - at);
  row->size--;
  editorUpdateRow(row);
  E.dirty++;
@@ -475,10 +475,10 @@ void editorOpen(char *filename)
   FILE *fp = fopen(filename, "r");
   if (!fp) 
     die("fopen");
-  char *line = NULL;
-  size_t linecap = 0;
-  ssize_t linelen;
-  while ((linelen = getline(&line, &linecap, fp)) != -1) 
+  char *line = NULL;                                     // buffer
+  size_t linecap = 0;                                    //line capacity: size of line 
+  ssize_t linelen;                                       //to store the length of the line
+  while ((linelen = getline(&line, &linecap, fp)) != -1)             //to get the length of the line
    {
     while (linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
        linelen--;
@@ -755,7 +755,8 @@ void editorRefreshScreen()
   abFree(&ab);
 }
 
-void editorSetStatusMessage(const char *fmt, ...) 
+//Function to print a status message at the bottom of the screen
+void editorSetStatusMessage(const char *fmt, ...)              
 {
   va_list ap;
   va_start(ap, fmt);
